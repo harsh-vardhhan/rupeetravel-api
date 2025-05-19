@@ -5,7 +5,6 @@ use diesel::r2d2::{self, ConnectionManager};
 use rocket::http::Status;
 use rocket::serde::json::{json, Json, Value};
 use rocket::{get, post, State};
-use std::ops::Bound::Included;
 
 type DbPool = r2d2::Pool<ConnectionManager<SqliteConnection>>;
 
