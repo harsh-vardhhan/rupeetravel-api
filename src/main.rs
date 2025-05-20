@@ -34,7 +34,7 @@ fn rocket() -> _ {
             if is_on_railway {
                 // We're on Railway, so use Railway SQLite database
                 println!("Running on Railway - using Railway SQLite database");
-                String::from("sqlite://sqlite3.railway.internal/database.db")
+                String::from("sqlite3.railway.internal")
             } else {
                 // Not on Railway and no DATABASE_URL, this is an error
                 panic!("DATABASE_URL environment variable must be set");
