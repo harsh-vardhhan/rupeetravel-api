@@ -21,19 +21,25 @@ pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
 fn rocket() -> _ {
     dotenv().ok();
     
-    // Auto-detect Railway environment
-    // Railway sets RAILWAY_ENVIRONMENT and RAILWAY_PROJECT_ID variables
-    let is_on_railway = env::var("RAILWAY_ENVIRONMENT").is_ok() || env::var("RAILWAY_PROJECT_ID").is_ok();
-    
     // Determine the database URL based on environment
-    let database_url = if is_on_railway {
-        // We're on Railway, so use Railway SQLite database
-        println!("Running on Railway - using Railway SQLite database");
-        String::from("sqlite://sqlite3.railway.internal/database.db")
-    } else {
-        // Not on Railway, so use local database
-        println!("Running locally - using local SQLite database");
-        env::var("DATABASE_URL").expect("DATABASE_URL must be set")
+    let database_url = match env::var("DATABASE_URL") {
+        Ok(url) => {
+            println!("Using database URL from environment: {}", url);
+            url
+        },
+        Err(_) => {
+            // Check if we're on Railway
+            let is_on_railway = env::var("RAILWAY_ENVIRONMENT").is_ok() || env::var("RAILWAY_PROJECT_ID").is_ok();
+            
+            if is_on_railway {
+                // We're on Railway, so use Railway SQLite database
+                println!("Running on Railway - using Railway SQLite database");
+                String::from("sqlite://sqlite3.railway.internal/database.db")
+            } else {
+                // Not on Railway and no DATABASE_URL, this is an error
+                panic!("DATABASE_URL environment variable must be set");
+            }
+        }
     };
     
     println!("Connecting to database: {}", database_url);

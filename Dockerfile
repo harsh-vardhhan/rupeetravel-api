@@ -1,4 +1,4 @@
-FROM rust:1.82-slim-bookworm AS builder
+FROM rust:1.85-slim as builder
 
 # Install dependencies
 RUN apt-get update && apt-get install -y \
@@ -9,28 +9,16 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# Copy the Cargo.toml and Cargo.lock files
-COPY Cargo.toml Cargo.lock ./
-
-# Create a dummy main.rs file to build dependencies
-RUN mkdir -p src && echo "fn main() {}" > src/main.rs
-
-# Build dependencies (this step is cached)
-RUN cargo build --release
-
-# Remove the dummy file
-RUN rm src/main.rs
-
-# Copy the actual source code
+# Copy the entire project
 COPY . .
 
 # Build the application
 RUN cargo build --release
 
-# Runtime image
-FROM debian:bookworm-slim
+# Runtime image - using the same base image as the builder to ensure glibc compatibility
+FROM rust:1.85-slim
 
-# Install runtime dependencies
+# Install runtime dependencies only
 RUN apt-get update && apt-get install -y \
     libsqlite3-0 \
     ca-certificates \
@@ -41,9 +29,14 @@ WORKDIR /app
 # Copy the binary from the builder stage
 COPY --from=builder /app/target/release/flight_api /app/flight_api
 
-# Set the environment variable for Railway
+# Create an empty database file if it doesn't exist
+RUN touch /app/flight_api.db && chmod 666 /app/flight_api.db
+
+# Set the environment variables for Rocket
 ENV ROCKET_ADDRESS=0.0.0.0
 ENV ROCKET_PORT=8000
+ENV ROCKET_LOG_LEVEL=normal
+ENV DATABASE_URL=sqlite:/app/flight_api.db
 
 # Expose the port
 EXPOSE 8000
