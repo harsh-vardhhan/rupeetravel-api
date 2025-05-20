@@ -91,4 +91,5 @@ pub struct FlightQuery {
     pub sort_by: Option<String>,
     pub max_price: Option<i32>,
     pub max_rain: Option<f32>,
+    pub airline: Option<String>,
 }

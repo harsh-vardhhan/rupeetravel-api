@@ -59,85 +59,109 @@ pub struct PaginatedFlightResponse {
 
 #[get("/flights?<query..>")]
 pub async fn get_flights(
-    pool: &State<DbPool>,
+    pool: &State<DbPool>, // Assuming DbPool is defined in your crate root
     query: FlightQuery,
 ) -> Result<Json<PaginatedFlightResponse>, Status> {
     let mut conn = pool.get().map_err(|_| Status::ServiceUnavailable)?;
-    
+
     // Set defaults for pagination
     let page_number = query.page.unwrap_or(1);
     let items_per_page = query.limit.unwrap_or(20).min(20); // Limit max to 20
     let offset = (page_number - 1) * items_per_page;
-    
+
     // Extract filter values to avoid ownership issues
     let origin_filter = query.origin.as_ref();
     let destination_filter = query.destination.as_ref();
     let max_price_filter = query.max_price;
     let max_rain_filter = query.max_rain;
     let sort_by = query.sort_by.as_deref();
-    
+
+    // Parse the comma-separated airline string into a vector of strings
+    let airline_filters: Option<Vec<String>> = query.airline.as_ref()
+        .map(|s| s.split(',').map(|name| name.trim().to_string()).collect());
+
     // Build the main query for retrieving flights
     let mut main_query = flights.into_boxed();
-    
+
     // Apply filters
     if let Some(org) = origin_filter {
         main_query = main_query.filter(origin.eq(org));
     }
-    
+
     if let Some(dest) = destination_filter {
         main_query = main_query.filter(destination.eq(dest));
     }
-    
+
     if let Some(max_p) = max_price_filter {
         main_query = main_query.filter(price_inr.le(max_p));
     }
-    
+
     if let Some(max_r) = max_rain_filter {
         main_query = main_query.filter(rain_probability.le(max_r));
     }
-    
+
+    // Apply airline filter if present
+    if let Some(airlines_list) = &airline_filters {
+        if !airlines_list.is_empty() {
+            main_query = main_query.filter(airline.eq_any(airlines_list));
+        }
+    }
+
     // Apply sorting
     match sort_by {
         Some("date") => main_query = main_query.order(date.asc()),
         _ => main_query = main_query.order(price_inr.asc()), // Default sort by price
     }
-    
+
     // Execute the main query with pagination
     let results = main_query
         .limit(items_per_page)
         .offset(offset)
         .load::<Flight>(&mut conn)
-        .map_err(|_| Status::InternalServerError)?;
-    
+        .map_err(|e| {
+             eprintln!("Database error loading flights: {:?}", e); // Log the error
+             Status::InternalServerError
+        })?;
+
     // Build a separate count query
     let mut count_query = flights.into_boxed();
-    
+
     // Apply the same filters to the count query
     if let Some(org) = origin_filter {
         count_query = count_query.filter(origin.eq(org));
     }
-    
+
     if let Some(dest) = destination_filter {
         count_query = count_query.filter(destination.eq(dest));
     }
-    
+
     if let Some(max_p) = max_price_filter {
         count_query = count_query.filter(price_inr.le(max_p));
     }
-    
+
     if let Some(max_r) = max_rain_filter {
         count_query = count_query.filter(rain_probability.le(max_r));
     }
-    
+
+    // Apply airline filter to the count query as well
+    if let Some(airlines_list) = &airline_filters {
+         if !airlines_list.is_empty() {
+            count_query = count_query.filter(airline.eq_any(airlines_list));
+         }
+    }
+
     // Get the total count of matching flights
     let total_count: i64 = count_query
         .count()
         .get_result(&mut conn)
-        .map_err(|_| Status::InternalServerError)?;
-    
+        .map_err(|e| {
+            eprintln!("Database error counting flights: {:?}", e); // Log the error
+            Status::InternalServerError
+        })?;
+
     // Calculate total pages
     let total_pages = (total_count as f64 / items_per_page as f64).ceil() as i64;
-    
+
     // Create the paginated response
     let response = PaginatedFlightResponse {
         data: results,
@@ -145,6 +169,6 @@ pub async fn get_flights(
         total_pages,
         total_items: total_count,
     };
-    
+
     Ok(Json(response))
 }
