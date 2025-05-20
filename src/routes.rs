@@ -8,13 +8,28 @@ use rocket::{get, post, State};
 
 type DbPool = r2d2::Pool<ConnectionManager<SqliteConnection>>;
 
-// POST endpoint to insert flight data
-#[post("/flights", format = "json", data = "<flight_data>")]
+#[post("/flights?<password>", format = "json", data = "<flight_data>")]
 pub async fn insert_flights(
     pool: &State<DbPool>,
     flight_data: Json<Vec<InputFlight>>,
+    password: Option<String>,
 ) -> Result<Json<Value>, Status> {
+    // Get password from environment variable
+    let env_password = std::env::var("FLIGHT_API_PASSWORD")
+        .map_err(|_| Status::InternalServerError)?;
+    
+    // Verify password
+    match password {
+        Some(pwd) if pwd == env_password => {},
+        _ => return Err(Status::Unauthorized)
+    }
+    
     let mut conn = pool.get().map_err(|_| Status::ServiceUnavailable)?;
+    
+    // Delete all existing flight records
+    diesel::delete(flights)
+        .execute(&mut conn)
+        .map_err(|_| Status::InternalServerError)?;
     
     let new_flights: Vec<NewFlight> = flight_data
         .into_inner()
@@ -29,7 +44,7 @@ pub async fn insert_flights(
     
     Ok(Json(json!({
         "status": "success",
-        "message": format!("Successfully inserted {} flights", inserted_count)
+        "message": format!("Successfully deleted all flights and inserted {} new flights", inserted_count)
     })))
 }
 
