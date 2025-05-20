@@ -36,7 +36,7 @@ RUN touch /app/flight_api.db && chmod 666 /app/flight_api.db
 ENV ROCKET_ADDRESS=0.0.0.0
 ENV ROCKET_PORT=8000
 ENV ROCKET_LOG_LEVEL=normal
-ENV DATABASE_URL=sqlite:/app/flight_api.db
+ENV DATABASE_URL=sqlite3.railway.internal
 
 # Expose the port
 EXPOSE 8000
