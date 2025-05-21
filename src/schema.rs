@@ -1,3 +1,5 @@
+use diesel::prelude::*;
+
 table! {
     flights (id) {
         id -> Integer,

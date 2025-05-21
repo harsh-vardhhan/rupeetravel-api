@@ -1,13 +1,8 @@
-#[macro_use]
-extern crate rocket;
-#[macro_use]
-extern crate diesel;
-extern crate dotenv;
-
 mod models;
 mod routes;
 mod schema;
 
+use rocket::{launch, routes};
 use diesel::prelude::*;
 use diesel::r2d2::{self, ConnectionManager};
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
