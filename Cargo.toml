@@ -13,3 +13,4 @@ diesel_migrations = "2.1.0"
 dotenv = "0.15.0"
 uuid = { version = "1.4.1", features = ["serde", "v4"] }
 chrono = { version = "0.4", features = ["serde"] }
+tokio = { version = "1.45.0", features = ["full"] }
