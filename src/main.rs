@@ -9,6 +9,7 @@ use dotenv::dotenv;
 use rocket::data::{Limits, ToByteUnit};
 use rocket::fairing::AdHoc;
 use rocket::{launch, routes, Build, Rocket};
+use rocket_cors::{AllowedHeaders, AllowedOrigins, CorsOptions};
 use routes::{get_flights, insert_flights};
 use std::env;
 
@@ -77,12 +78,27 @@ fn init_db_pool() -> DbPool {
 fn rocket() -> _ {
     let db_pool = init_db_pool();
 
+    // Configure CORS
+    let cors = CorsOptions::default()
+        .allowed_origins(AllowedOrigins::all())
+        .allowed_methods(
+            ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+                .iter()
+                .map(|s| s.parse().unwrap())
+                .collect(),
+        )
+        .allowed_headers(AllowedHeaders::all())
+        .allow_credentials(true)
+        .to_cors()
+        .expect("Failed to create CORS fairing");
+
     rocket::build()
         .manage(db_pool)
         .configure(
             rocket::Config::figment()
                 .merge(("limits", Limits::new().limit("json", 15.mebibytes()))),
         )
+        .attach(cors)
         .attach(AdHoc::try_on_ignite("Database Migrations", run_migrations))
         .mount("/api", routes![insert_flights, get_flights])
 }
