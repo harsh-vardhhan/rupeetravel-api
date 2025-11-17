@@ -1,4 +1,4 @@
-FROM rust:1.85-slim as builder
+FROM rust:1.86-slim as builder
 
 # Install dependencies
 RUN apt-get update && apt-get install -y \
@@ -16,7 +16,7 @@ COPY . .
 RUN cargo build --release
 
 # Runtime image - using the same base image as the builder to ensure glibc compatibility
-FROM rust:1.85-slim
+FROM rust:1.86-slim
 
 # Install runtime dependencies only
 RUN apt-get update && apt-get install -y \

@@ -1,3 +1,4 @@
+// routes.rs
 use crate::models::{Flight, FlightQuery, InputFlight, NewFlight};
 use crate::schema::flights::dsl::*;
 use crate::DbPool;

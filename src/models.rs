@@ -1,5 +1,4 @@
-// fetchFlight.rs
-
+// models.rs
 use crate::schema::flights;
 use diesel::prelude::*;
 use rocket::serde::{Deserialize, Serialize};
@@ -104,5 +103,4 @@ pub struct FlightQuery {
     pub max_price: Option<i32>,
     pub airline: Option<String>,
     pub max_rain: Option<f32>, // Re-added query parameter
-    pub free_meal: Option<bool>, // New query parameter
 }
