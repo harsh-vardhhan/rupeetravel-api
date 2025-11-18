@@ -59,8 +59,7 @@ fn init_db_pool() -> DbPool {
                 env::var("RAILWAY_ENVIRONMENT").is_ok() || env::var("RAILWAY_PROJECT_ID").is_ok();
 
             if is_on_railway {
-                println!("Running on Railway - using Railway SQLite database");
-                String::from("sqlite3.railway.internal")
+                String::from("/data/flights.db")
             } else {
                 panic!("DATABASE_URL environment variable must be set");
             }
