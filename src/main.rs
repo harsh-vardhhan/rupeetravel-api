@@ -7,7 +7,8 @@ mod s3_client;
 use diesel::prelude::*;
 use diesel::r2d2::{self, ConnectionManager};
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
-use lambda_http::{run, service_fn, Body, Error, Request, RequestExt, Response, Method};
+use lambda_http::{run, service_fn, Body, Error, Request, Response};
+use lambda_http::http::Method;
 use std::env;
 use s3_client::S3Config;
 
@@ -26,7 +27,7 @@ fn init_db(pool: &DbPool) {
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     // 1. Initialize AWS & Config
-    let config = aws_config::load_from_env().await;
+    let config = aws_config::load_defaults(aws_config::BehaviorVersion::latest()).await;
     let s3_client = aws_sdk_s3::Client::new(&config);
     let bucket_name = env::var("S3_BUCKET").expect("S3_BUCKET not set");
     
