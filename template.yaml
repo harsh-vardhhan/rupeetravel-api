@@ -17,6 +17,12 @@ Globals:
       Variables:
         RUST_BACKTRACE: 1
 
+Parameters:
+  FlightApiPassword:
+    Type: String
+    Description: "Password for the Flight API"
+    NoEcho: true
+
 Resources:
   FlightsDbBucket:
     Type: AWS::S3::Bucket
@@ -36,10 +42,10 @@ Resources:
       Environment:
         Variables:
           S3_BUCKET: !Ref FlightsDbBucket
-          FLIGHT_API_PASSWORD: "CHANGE_ME"
+          FLIGHT_API_PASSWORD: !Ref FlightApiPassword
       Policies:
         - S3CrudPolicy:
-            BucketName: !Ref FlightsDbBucket
+          BucketName: !Ref FlightsDbBucket
       Events:
         ApiEvent:
           Type: HttpApi # API Gateway v2
