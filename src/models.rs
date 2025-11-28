@@ -102,5 +102,6 @@ pub struct FlightQuery {
     pub max_price: Option<i32>,
     pub airline: Option<String>,
     pub max_rain: Option<f32>,
+    #[allow(dead_code)]
     pub password: Option<String>, // Added here for easier parsing
 }

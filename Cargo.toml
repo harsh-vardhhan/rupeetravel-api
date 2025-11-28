@@ -17,6 +17,7 @@ serde_urlencoded = "0.7" # Needed to parse query strings manually
 # Database
 diesel = { version = "2.1.0", features = ["sqlite", "r2d2", "uuid"] }
 diesel_migrations = "2.1.0"
+libsqlite3-sys = { version = "0.26", features = ["bundled"] }
 uuid = { version = "1.4.1", features = ["serde", "v4"] }
 
 # AWS
