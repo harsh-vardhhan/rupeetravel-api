@@ -14,7 +14,7 @@ pub struct S3Config {
 
 pub async fn ensure_db_exists(client: &Client, config: &S3Config) -> Result<(), String> {
     if Path::new(&config.local_path).exists() {
-        println!("Database found locally at {}", config.local_path);
+        println!("Database found locally on {}", config.local_path);
         return Ok(());
     }
 
