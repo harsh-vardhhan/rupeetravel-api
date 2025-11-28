@@ -1,8 +1,7 @@
-// models.rs
+// src/models.rs
 use crate::schema::flights;
 use diesel::prelude::*;
-use rocket::serde::{Deserialize, Serialize};
-use rocket::form::FromForm;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 #[derive(Queryable, Serialize)]
@@ -27,7 +26,7 @@ pub struct Flight {
 }
 
 #[derive(Deserialize)]
-#[serde(rename_all = "camelCase")] // Use this to handle all camelCase keys automatically
+#[serde(rename_all = "camelCase")]
 pub struct InputFlight {
     pub uuid: Option<String>,
     pub date: String,
@@ -43,7 +42,6 @@ pub struct InputFlight {
     pub link: String,
     pub rain_probability: f32,
     pub free_meal: bool,
-    // Optional fields
     pub min_checked_luggage_price: Option<i32>,
     pub min_checked_luggage_weight: Option<String>,
     pub total_with_min_luggage: Option<i32>,
@@ -93,7 +91,8 @@ impl From<InputFlight> for NewFlight {
     }
 }
 
-#[derive(Deserialize, FromForm)]
+// Standard Serde struct for Query Params
+#[derive(Deserialize)]
 pub struct FlightQuery {
     pub page: Option<i64>,
     pub limit: Option<i64>,
@@ -102,5 +101,6 @@ pub struct FlightQuery {
     pub sort_by: Option<String>,
     pub max_price: Option<i32>,
     pub airline: Option<String>,
-    pub max_rain: Option<f32>, // Re-added query parameter
+    pub max_rain: Option<f32>,
+    pub password: Option<String>, // Added here for easier parsing
 }

@@ -1,0 +1,50 @@
+name: Deploy to AWS
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Zig
+        uses: goto-bus-stop/setup-zig@v2
+
+      - name: Install Cargo Lambda
+        uses: jaxxstorm/action-install-gh-release@v1.10.0
+        with:
+          repo: cargo-lambda/cargo-lambda
+          tag: v1.0.0 # Pin to a known working version or use latest
+
+      - name: Setup AWS SAM CLI
+        uses: aws-actions/setup-sam@v2
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
+
+      - name: Build
+        run: sam build
+
+      - name: Deploy
+        run: |
+          sam deploy --no-confirm-changeset --no-fail-on-empty-changeset \
+            --stack-name rupeetravel-api \
+            --region ap-south-1 \
+            --resolve-s3 \
+            --capabilities CAPABILITY_IAM \
+            --parameter-overrides FlightApiPassword=${{ secrets.FLIGHT_API_PASSWORD }}

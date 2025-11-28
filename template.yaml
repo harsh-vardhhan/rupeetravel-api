@@ -1,0 +1,62 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Native Rust Lambda API with S3 backed SQLite
+
+Rules:
+  RegionCheck:
+    Assertions:
+      - Assert: !Equals [ !Ref "AWS::Region", "ap-south-1" ]
+        AssertDescription: "CRITICAL: This stack must be deployed to ap-south-1 (Mumbai) for latency reasons."
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 512
+    Environment:
+      Variables:
+        RUST_BACKTRACE: 1
+
+Parameters:
+  FlightApiPassword:
+    Type: String
+    Description: "Password for the Flight API"
+    NoEcho: true
+
+Resources:
+  FlightsDbBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "flights-db-${AWS::AccountId}-${AWS::Region}"
+
+  FlightApiFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: rust-cargolambda
+    Properties:
+      CodeUri: .
+      Handler: bootstrap
+      Runtime: provided.al2023
+      Architectures:
+        - arm64
+      Environment:
+        Variables:
+          S3_BUCKET: !Ref FlightsDbBucket
+          FLIGHT_API_PASSWORD: !Ref FlightApiPassword
+      Policies:
+        - S3CrudPolicy:
+          BucketName: !Ref FlightsDbBucket
+      Events:
+        ApiEvent:
+          Type: HttpApi # API Gateway v2
+          Properties:
+            Path: /{proxy+}
+            Method: ANY
+
+Outputs:
+  ApiUrl:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com/api/flights"
+  BucketName:
+    Description: "S3 Bucket Name"
+    Value: !Ref FlightsDbBucket
