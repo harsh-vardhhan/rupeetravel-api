@@ -3,8 +3,7 @@ version = 0.1
 [default.deploy]
 [default.deploy.parameters]
 stack_name = "rupeetravel-api"
-s3_bucket = "rupeetravel-api-deployment-artifacts"
-s3_prefix = "rupeetravel-api"
+resolve_s3 = true
 region = "ap-south-1"
 confirm_changeset = true
 capabilities = "CAPABILITY_IAM"
