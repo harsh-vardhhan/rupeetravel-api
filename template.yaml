@@ -45,7 +45,7 @@ Resources:
           FLIGHT_API_PASSWORD: !Ref FlightApiPassword
       Policies:
         - S3CrudPolicy:
-          BucketName: !Ref FlightsDbBucket
+            BucketName: !Ref FlightsDbBucket
       Events:
         ApiEvent:
           Type: HttpApi # API Gateway v2
