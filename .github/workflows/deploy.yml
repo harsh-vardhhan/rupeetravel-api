@@ -38,7 +38,7 @@ jobs:
           aws-region: ap-south-1
 
       - name: Build
-        run: sam build
+        run: sam build --beta-features
 
       - name: Deploy
         run: |
