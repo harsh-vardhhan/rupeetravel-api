@@ -1,104 +1,76 @@
-// main.rs
+// src/main.rs
 mod models;
 mod routes;
 mod schema;
+mod s3_client;
 
 use diesel::prelude::*;
 use diesel::r2d2::{self, ConnectionManager};
 use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
-use dotenv::dotenv;
-use rocket::data::{Limits, ToByteUnit};
-use rocket::fairing::AdHoc;
-use rocket::{launch, routes, Build, Rocket};
-use rocket_cors::{AllowedHeaders, AllowedOrigins, CorsOptions};
-use routes::{get_flights, insert_flights};
+use lambda_http::{run, service_fn, Body, Error, Request, RequestExt, Response, Method};
 use std::env;
+use s3_client::S3Config;
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
-
 pub type DbPool = r2d2::Pool<ConnectionManager<SqliteConnection>>;
 
-async fn run_migrations(rocket: Rocket<Build>) -> Result<Rocket<Build>, Rocket<Build>> {
-    let pool = rocket.state::<DbPool>().expect("Database pool not found");
-    let pool_clone = pool.clone();
-    let result = tokio::task::spawn_blocking(
-        move || -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-            let mut conn = pool_clone.get()?;
-            conn.run_pending_migrations(MIGRATIONS)?;
-            Ok(())
-        },
-    )
-    .await;
+const DB_PATH: &str = "/tmp/flights.db";
+const DB_KEY: &str = "flights.db";
 
-    match result {
-        Ok(Ok(_)) => {
-            println!("Migrations executed successfully!");
-            Ok(rocket)
-        }
-        Ok(Err(e)) => {
-            eprintln!("Failed to run migrations: {:?}", e);
-            Err(rocket)
-        }
-        Err(e) => {
-            eprintln!("Task join error: {:?}", e);
-            Err(rocket)
-        }
-    }
+// Initialize the Database (Run migrations)
+fn init_db(pool: &DbPool) {
+    let mut conn = pool.get().expect("Failed to get DB connection");
+    conn.run_pending_migrations(MIGRATIONS).expect("Migrations failed");
 }
 
-fn init_db_pool() -> DbPool {
-    dotenv().ok();
-
-    let database_url = match env::var("DATABASE_URL") {
-        Ok(url) => {
-            println!("Using database URL from environment: {}", url);
-            url
-        }
-        Err(_) => {
-            let is_on_railway =
-                env::var("RAILWAY_ENVIRONMENT").is_ok() || env::var("RAILWAY_PROJECT_ID").is_ok();
-
-            if is_on_railway {
-                String::from("/data/flights.db")
-            } else {
-                panic!("DATABASE_URL environment variable must be set");
-            }
-        }
+#[tokio::main]
+async fn main() -> Result<(), Error> {
+    // 1. Initialize AWS & Config
+    let config = aws_config::load_from_env().await;
+    let s3_client = aws_sdk_s3::Client::new(&config);
+    let bucket_name = env::var("S3_BUCKET").expect("S3_BUCKET not set");
+    
+    let s3_cfg = S3Config {
+        bucket: bucket_name,
+        key: DB_KEY.to_string(),
+        local_path: DB_PATH.to_string(),
     };
 
-    println!("Connecting to database: {}", database_url);
+    // 2. Sync DB from S3 (Cold Start)
+    if let Err(e) = s3_client::ensure_db_exists(&s3_client, &s3_cfg).await {
+        println!("Warning: DB download failed (might be first run): {}", e);
+    }
 
-    let manager = ConnectionManager::<SqliteConnection>::new(database_url);
-    r2d2::Pool::builder()
+    // 3. Create Connection Pool
+    let manager = ConnectionManager::<SqliteConnection>::new(DB_PATH);
+    let pool = r2d2::Pool::builder()
+        .max_size(1) // Keep connections low
         .build(manager)
-        .expect("Failed to create pool")
-}
+        .expect("Failed to build pool");
 
-#[launch]
-fn rocket() -> _ {
-    let db_pool = init_db_pool();
+    // 4. Run Migrations
+    init_db(&pool);
 
-    // Configure CORS
-    let cors = CorsOptions::default()
-        .allowed_origins(AllowedOrigins::all())
-        .allowed_methods(
-            ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
-                .iter()
-                .map(|s| s.parse().unwrap())
-                .collect(),
-        )
-        .allowed_headers(AllowedHeaders::all())
-        .allow_credentials(true)
-        .to_cors()
-        .expect("Failed to create CORS fairing");
+    // 5. Start Lambda Runtime
+    // We clone our state to move it into the request handler closure
+    let pool_ref = pool.clone();
+    let s3_client_ref = s3_client.clone();
+    let s3_cfg_ref = s3_cfg.clone();
 
-    rocket::build()
-        .manage(db_pool)
-        .configure(
-            rocket::Config::figment()
-                .merge(("limits", Limits::new().limit("json", 15.mebibytes()))),
-        )
-        .attach(cors)
-        .attach(AdHoc::try_on_ignite("Database Migrations", run_migrations))
-        .mount("/api", routes![insert_flights, get_flights])
+    run(service_fn(move |req: Request| {
+        let pool = pool_ref.clone();
+        let s3 = s3_client_ref.clone();
+        let cfg = s3_cfg_ref.clone();
+        
+        async move {
+            match (req.method(), req.uri().path()) {
+                (&Method::GET, "/api/flights") => routes::get_flights(&pool, req).await,
+                (&Method::POST, "/api/flights") => routes::insert_flights(&pool, &s3, &cfg, req).await,
+                _ => Ok(Response::builder()
+                    .status(404)
+                    .body(Body::from("Not Found"))
+                    .unwrap()),
+            }
+        }
+    })).await
 }
