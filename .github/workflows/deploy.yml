@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - master
+    paths-ignore:
+      - 'architecture.excalidraw'
+      - 'README.md'
 
 permissions:
   id-token: write
