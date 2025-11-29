@@ -11,7 +11,7 @@ Rules:
 
 Globals:
   Function:
-    Timeout: 30
+    Timeout: 10
     MemorySize: 128
     Environment:
       Variables:
