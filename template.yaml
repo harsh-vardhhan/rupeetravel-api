@@ -12,7 +12,7 @@ Rules:
 Globals:
   Function:
     Timeout: 30
-    MemorySize: 512
+    MemorySize: 128
     Environment:
       Variables:
         RUST_BACKTRACE: 1
