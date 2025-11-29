@@ -1,4 +1,4 @@
-# Flight API 
+# Flights API for RupeeTravel 
 
 ## Architecture
 
