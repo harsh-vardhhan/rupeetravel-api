@@ -1,4 +1,4 @@
-// schema.rs
+// src/schema.rs
 
 use diesel::prelude::*;
 

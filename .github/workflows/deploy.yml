@@ -30,8 +30,10 @@ jobs:
           repo: cargo-lambda/cargo-lambda
           tag: v1.0.0 # Pin to a known working version or use latest
 
-      - name: Setup AWS SAM CLI
-        uses: aws-actions/setup-sam@v2
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.0"
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -41,13 +43,18 @@ jobs:
           aws-region: ap-south-1
 
       - name: Build
-        run: sam build --beta-features
+        run: cargo lambda build --release --arm64 --output-format zip
 
-      - name: Deploy
-        run: |
-          sam deploy --no-confirm-changeset --no-fail-on-empty-changeset \
-            --stack-name rupeetravel-api \
-            --region ap-south-1 \
-            --resolve-s3 \
-            --capabilities CAPABILITY_IAM \
-            --parameter-overrides FlightApiPassword=${{ secrets.FLIGHT_API_PASSWORD }}
+      - name: Terraform Init
+        working-directory: ./terraform
+        run: terraform init
+
+      - name: Terraform Validate
+        working-directory: ./terraform
+        run: terraform validate
+
+      - name: Terraform Apply
+        working-directory: ./terraform
+        run: terraform apply -auto-approve
+        env:
+          TF_VAR_flight_api_password: ${{ secrets.FLIGHT_API_PASSWORD }}

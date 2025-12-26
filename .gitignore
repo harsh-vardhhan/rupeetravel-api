@@ -29,3 +29,9 @@ diesel.toml
 
 # Debug info
 *.pdb
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+*.tfplan
