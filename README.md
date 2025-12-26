@@ -7,12 +7,15 @@
 ## API Documentation
 
 ### Base URL
-`/api`
+`https://emz8lgvgm2.execute-api.ap-south-1.amazonaws.com/api`
 
 ### Endpoints
 
 #### 1. Get Flights
 Retrieve a paginated list of flights with optional filtering and sorting.
+
+**[Live Demo](https://emz8lgvgm2.execute-api.ap-south-1.amazonaws.com/api/flights)**
+
 
 - **URL**: `/flights`
 - **Method**: `GET`
