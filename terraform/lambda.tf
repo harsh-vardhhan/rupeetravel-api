@@ -7,12 +7,12 @@ resource "aws_lambda_function" "flight_api" {
   memory_size   = 128
   timeout       = 10
 
-  filename = "../target/lambda/rupeetravel-api/bootstrap.zip"
+  filename = "../target/lambda/flight_api/bootstrap.zip"
   
   # This is needed because the filename might not exist during plan if not built yet, 
   # but Terraform requires it for hashing. 
   # We assume the user builds it before apply.
-  source_code_hash = fileexists("../target/lambda/rupeetravel-api/bootstrap.zip") ? filebase64sha256("../target/lambda/rupeetravel-api/bootstrap.zip") : null
+  source_code_hash = fileexists("../target/lambda/flight_api/bootstrap.zip") ? filebase64sha256("../target/lambda/flight_api/bootstrap.zip") : null
 
 
   environment {
